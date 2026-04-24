@@ -114,3 +114,8 @@ npm run build
 - RBAC middleware
 - Rollback mechanisms
 - Cockpit dashboard
+
+## Post-Closure Amendments
+
+### [2026-04-24] (Sprint 2)
+- Added `CONTENTOPS_SESSION_SECRET` per Sprint 2 Charter Amendment. This variable is required for signing session cookies and must be at least 32 characters in length.
