@@ -1,0 +1,39 @@
+import { PenTool, User } from 'lucide-react';
+
+export interface ChatMessageProps {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export function ChatMessage({ role, content }: ChatMessageProps) {
+  const isUser = role === 'user';
+
+  return (
+    <li
+      className={`flex gap-3.5 py-4 ${isUser ? '' : 'rounded-xl bg-gray-50 px-4'}`}
+    >
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+          isUser
+            ? 'border border-gray-200 bg-white text-gray-400'
+            : 'bg-indigo-600 text-white'
+        }`}
+      >
+        {isUser ? (
+          <User className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={2} />
+        ) : (
+          <PenTool className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={2} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <div className="mb-0.5 text-[13px] font-semibold text-gray-800">
+          {isUser ? 'You' : 'Editorial Assistant'}
+        </div>
+        <div className="whitespace-pre-wrap break-words text-[14.5px] leading-[1.7] text-gray-600">
+          {content}
+        </div>
+      </div>
+    </li>
+  );
+}

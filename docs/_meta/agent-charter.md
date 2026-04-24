@@ -1,6 +1,6 @@
 # Agent Charter — ContentOps
 
-**Version:** 1.2
+**Version:** 1.3
 **Status:** Active
 **Governs:** All AI coding agent sessions for the ContentOps project
 **Precedence:** This charter outranks any single sprint doc, spec, or
@@ -565,8 +565,29 @@ should be reserved for specs, QA passes, and hard debugging.
 
 ---
 
+---
+
+## 16. The 11-Sprint Roadmap
+
+ContentOps is delivered in 11 sprints (Sprint 0 through Sprint 10).
+
+1.  **Sprint 0 — Foundation (complete):** Next.js 16, React 19, TS Strict, Tailwind 4, SQLite, Vitest, Zod, and placeholder page.
+2.  **Sprint 1 — Homepage Chat UI + Streaming Shell (complete):** Polished light editorial UI, deterministic mock streaming, and scroll architecture.
+3.  **Sprint 2 — Sessions, SQLite Message History, and Role Overlay:** Conversations/messages tables, signed cookies, and role switcher (Creator/Editor/Admin).
+4.  **Sprint 3 — Anthropic Streaming Chat + Demo Cost Guardrails:** Real LLM integration with token-counting and daily spend limits.
+5.  **Sprint 4 — Seed Corpus + RAG Ingestion Foundation:** Document ingestion, chunking, and embedding storage in SQLite.
+6.  **Sprint 5 — Hybrid RAG Retrieval + Grounded Chat:** Vector + BM25 retrieval and grounded assistant responses.
+7.  **Sprint 6 — AI Eval Harness:** Automated groundedness and retrieval quality metrics.
+8.  **Sprint 7 — Tool Registry + Read-Only MCP Tools:** RBAC-aware tool registry and scaffolding at least one custom MCP server per Section 5 item 3.
+9.  **Sprint 8 — Mutating Tool + Audit Log + Rollback:** State-changing tools with compensating actions and history.
+10. **Sprint 9 — Operator Cockpit Dashboard:** Live state, actions, approvals, and eval health surface.
+11. **Sprint 10 — Demo Deployment + README + Loom:** Vercel deployment, final documentation, and demo recording.
+
+---
+
 ### Changelog
 
+- **v1.3** — Sprint plan reordered to 11 sprints. AI Eval Harness moved from late-project (former Sprint 9) to Sprint 6, positioned after RAG retrieval lands and before tools/mutations/cockpit add complexity. Sprint 10 becomes a focused deployment and portfolio closeout (Vercel deploy, README, Loom) rather than a catch-all. Sprint 7 explicitly includes scaffolding at least one custom MCP server per Section 5 item 3.
 - **v1.2** — Added Context7 verification requirement to Section 1 (session
   startup) and Section 7 (delivery loop steps 3 and 5). Added Sequential
   Thinking recommendation to delivery loop steps 1 and 2. Added Section 15
