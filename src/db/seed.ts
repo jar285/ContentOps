@@ -1,28 +1,9 @@
 import Database from 'better-sqlite3';
+import { DEMO_USERS } from '@/lib/auth/constants';
 import { SCHEMA } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 
-// Stable UUIDs for demo users
-export const DEMO_USERS = [
-  {
-    id: '00000000-0000-0000-0000-000000000001',
-    email: 'creator@contentops.local',
-    role: 'Creator',
-    display_name: 'Syndicate Creator',
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000002',
-    email: 'editor@contentops.local',
-    role: 'Editor',
-    display_name: 'Syndicate Editor',
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000003',
-    email: 'admin@contentops.local',
-    role: 'Admin',
-    display_name: 'Syndicate Admin',
-  },
-] as const;
+export { DEMO_USERS };
 
 export function runSeed(db: Database.Database) {
   // Initialize schema
