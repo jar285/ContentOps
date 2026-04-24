@@ -93,7 +93,7 @@ The read-only demo decision constrains later sprints: no demo-mode registration 
 - The package configuration specifies the pinned versions for Next.js 16, React 19, Tailwind 4, better-sqlite3, Zod 4, Biome, tsx, Vitest, and the `@testing-library` + `happy-dom` suite.
 - The `vitest.config.ts` must be configured to discover co-located `.test.tsx` and `.test.ts` files (e.g., `include: ['src/**/*.test.{ts,tsx}']`), use `environment: 'happy-dom'`, and include a setup-files pattern for registering `@testing-library/jest-dom/vitest`.
 - The Zod schema strictly validates and coerces the defined environment variables at runtime.
-- A basic integration test asserts that `GET /` returns a 200 status code and renders the placeholder page.
+- A basic component integration test renders the `/` page component with Vitest, happy-dom, and Testing Library, and asserts that the placeholder page content is visible.
 - The `npm run build` command succeeds completely from a clean checkout, bundling `better-sqlite3` successfully via `serverExternalPackages`.
 - The seed script (`src/db/seed.ts`) uses path aliases safely (Context7 verified that `tsx 4.x` resolves `tsconfig.json` paths natively).
 - The seed script is strictly idempotent (e.g., via `INSERT OR IGNORE`) to safely execute repeatedly. A single `build` script (`next build`) is maintained locally, while Vercel project settings must explicitly override the build command to `npm run db:seed && npm run build`. This approach (Option A) cleanly separates local stateless builds from Vercel's ephemeral lifecycle requiring a pre-seeded asset.
