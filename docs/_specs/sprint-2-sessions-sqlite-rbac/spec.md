@@ -10,6 +10,14 @@ Sprint 1 provided a polished UI with mock streaming, but state is entirely in-me
 4. **Role Consistency:** Role values must be capitalized: `'Creator'`, `'Editor'`, `'Admin'`.
 5. **Database Concurrency:** The SQLite connection must enable `PRAGMA journal_mode = WAL` to handle concurrent operations across Route Handlers and Server Actions.
 
+## 14. Post-Implementation Amendments (Cold-Start Audit)
+
+During the final Implementation QA and cold-start audit, the following robustness fixes were implemented to ensure production readiness:
+
+- **14.1: Database Busy Timeout**: Set `busy_timeout = 5000` in `src/lib/db/index.ts` to prevent `SQLITE_BUSY` deadlocks during multi-process builds and concurrent read/writes.
+- **14.2: Stale State Recovery**: Updated `POST /api/chat` and `src/app/page.tsx` to verify the existence of `conversationId` and `userId` in the database, preventing `FOREIGN KEY` crashes when clients hold legacy sessions.
+- **14.3: Safe JSON Parsing**: Hardened the chat API route with try-catch blocks around `req.json()` to handle malformed or empty bodies gracefully with a `400 Bad Request`.
+
 ## Charter Amendment (Retroactive Env Var)
 This sprint retroactively adds `CONTENTOPS_SESSION_SECRET` to the environment schema defined in Sprint 0. This secret is required for signing session tokens and must be a minimum of 32 characters in production.
 

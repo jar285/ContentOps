@@ -7,10 +7,22 @@ import { ChatComposer } from './ChatComposer';
 import type { ChatMessageProps } from './ChatMessage';
 import { ChatTranscript } from './ChatTranscript';
 
-export function ChatUI() {
-  const [messages, setMessages] = useState<ChatMessageProps[]>([]);
+export interface ChatUIProps {
+  initialMessages?: ChatMessageProps[];
+  conversationId?: string | null;
+}
+
+export function ChatUI({
+  initialMessages = [],
+  conversationId = null,
+}: ChatUIProps) {
+  const [messages, setMessages] = useState<ChatMessageProps[]>(initialMessages);
   const [status, setStatus] = useState<'idle' | 'streaming' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(conversationId);
 
   const handleSubmit = async (text: string) => {
     const trimmed = text.trim();
@@ -34,25 +46,73 @@ export function ChatUI() {
     setErrorMsg('');
 
     try {
-      const stream = mockStreamGenerator(trimmed);
-      let currentContent = '';
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: trimmed,
+          conversationId: activeConversationId,
+        }),
+      });
 
-      for await (const chunk of stream) {
-        currentContent += chunk;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: currentContent }
-              : msg,
-          ),
-        );
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to generate response');
       }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let currentContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let data;
+          try {
+            data = JSON.parse(line);
+          } catch (e) {
+            console.error('Error parsing stream line:', e);
+            continue;
+          }
+            
+          if (data.conversationId) {
+            setActiveConversationId(data.conversationId);
+          } else if (data.error) {
+            throw new Error(data.error);
+          } else if (data.chunk) {
+            currentContent += data.chunk;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId
+                  ? { ...m, content: currentContent }
+                  : m
+              )
+            );
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        try {
+          const data = JSON.parse(buffer);
+          if (data.error) throw new Error(data.error);
+        } catch (e) {
+          // ignore
+        }
+      }
+
       setStatus('idle');
-    } catch (error) {
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg(error.message);
       setStatus('error');
-      setErrorMsg(
-        error instanceof Error ? error.message : 'An unknown error occurred.',
-      );
     }
   };
 

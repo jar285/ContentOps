@@ -4,25 +4,53 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import Home from './page';
+import { ChatUI } from '@/components/chat/ChatUI';
 
 describe('Homepage Chat UI', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    // Element.prototype.scrollIntoView is not implemented in happy-dom by default
     Element.prototype.scrollIntoView = vi.fn();
+    
+    // Mock fetch for the chat submission
+    window.fetch = vi.fn().mockImplementation(async (url, options) => {
+      if (url === '/api/chat') {
+        const body = JSON.parse(options.body);
+        const message = body?.message || '';
+        
+        if (message.includes('throw error')) {
+          return new Response(null, { status: 500, statusText: 'Internal Server Error' });
+        }
+
+        const chunks = ['I ', 'can ', 'help ', 'onboard ', 'Side ', 'Quest ', 'Syndicate ', 'by ', 'clarifying ', 'the ', 'brand ', 'voice, ', 'identifying ', 'content ', 'pillars, ', 'drafting ', 'first-week ', 'post ', 'ideas, ', 'and ', 'preparing ', 'items ', 'for ', 'editorial ', 'approval.'];
+        
+        const stream = new ReadableStream({
+          async start(controller) {
+            controller.enqueue(new TextEncoder().encode(JSON.stringify({ conversationId: 'test-id' }) + '\n'));
+            for (const chunk of chunks) {
+              controller.enqueue(new TextEncoder().encode(JSON.stringify({ chunk }) + '\n'));
+            }
+            controller.close();
+          }
+        });
+
+        return new Response(stream, {
+          status: 200,
+          headers: { 'Content-Type': 'application/x-ndjson' }
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
   });
 
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
-    vi.useRealTimers();
   });
 
   it('renders the initial empty state correctly', () => {
-    render(<Home />);
+    render(<ChatUI />);
     expect(screen.getByTestId('chat-empty-state')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /Side Quest Syndicate/i }),
@@ -32,7 +60,7 @@ describe('Homepage Chat UI', () => {
   });
 
   it('allows typing and disables submit when empty', () => {
-    render(<Home />);
+    render(<ChatUI />);
 
     const input = screen.getByLabelText('Type a message');
     const submitBtn = screen.getByRole('button', { name: 'Send message' });
@@ -47,7 +75,7 @@ describe('Homepage Chat UI', () => {
   });
 
   it('ignores whitespace-only submissions', () => {
-    render(<Home />);
+    render(<ChatUI />);
 
     const input = screen.getByLabelText('Type a message');
     fireEvent.change(input, { target: { value: '   ' } });
@@ -60,7 +88,7 @@ describe('Homepage Chat UI', () => {
   });
 
   it('submits on Enter but not on Shift+Enter', () => {
-    render(<Home />);
+    render(<ChatUI />);
 
     const input = screen.getByLabelText('Type a message');
 
@@ -74,7 +102,7 @@ describe('Homepage Chat UI', () => {
   });
 
   it('streams the assistant response deterministically and locks composer', async () => {
-    render(<Home />);
+    render(<ChatUI />);
 
     const input = screen.getByLabelText('Type a message');
     const submitBtn = screen.getByRole('button', { name: 'Send message' });
@@ -89,24 +117,20 @@ describe('Homepage Chat UI', () => {
     const statusRegion = screen.getByRole('status');
     expect(statusRegion).toHaveTextContent('Assistant is typing...');
 
-    // Advance timers for initial delay
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(50);
+    await waitFor(() => {
+      expect(screen.getByText('Editorial Assistant')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Editorial Assistant')).toBeInTheDocument();
 
-    // Advance timers for remainder of stream
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
+    await waitFor(() => {
+      expect(input).not.toBeDisabled();
+      expect(statusRegion).toBeEmptyDOMElement();
     });
-
-    expect(input).not.toBeDisabled();
-    expect(statusRegion).toBeEmptyDOMElement();
   });
 
   it('renders the error state upon "throw error" prompt', async () => {
-    render(<Home />);
+    render(<ChatUI />);
 
     const input = screen.getByLabelText('Type a message');
     const submitBtn = screen.getByRole('button', { name: 'Send message' });
@@ -114,18 +138,13 @@ describe('Homepage Chat UI', () => {
     fireEvent.change(input, { target: { value: 'throw error' } });
     fireEvent.click(submitBtn);
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(50);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Failed to generate response/i })).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Failed to generate response')).toBeInTheDocument();
-    expect(
-      screen.getByText('Simulated streaming error triggered by prompt.'),
-    ).toBeInTheDocument();
-
+    
     const statusRegion = screen.getByRole('status');
     expect(statusRegion).toHaveTextContent(
-      'Error: Simulated streaming error triggered by prompt.',
+      'Error: Failed to generate response',
     );
 
     expect(input).not.toBeDisabled();
