@@ -7,6 +7,7 @@ Transition from in-memory state to a persisted SQLite database with role-based a
 
 ### 1. Foundation: Environment & Types
 - **Task 1.1:** Add `CONTENTOPS_SESSION_SECRET` to environment validation and `.env.example`.
+  - **Requirement:** Use `z.string().min(32)` for the secret validation to ensure sufficient entropy for HS256.
   - **Files:** `.env.example`, `src/lib/env.ts`
   - **Verification:** `npm run typecheck`, `npx biome check src/lib/env.ts`
 - **Task 1.2:** Retroactively amend Sprint 0 spec.
@@ -18,7 +19,8 @@ Transition from in-memory state to a persisted SQLite database with role-based a
   - **Verification:** `npx biome check src/lib/auth/types.ts`, `npm run typecheck`
 
 ### 2. Persistence: Schema & Concurrency
-- **Task 2.1:** Implement idempotent SQLite schema with WAL mode.
+- **Task 2.1:** Implement idempotent SQLite schema and connection logic.
+  - **Requirement:** `PRAGMA journal_mode = WAL` must be set in `src/lib/db/index.ts` during connection creation to apply to all runtimes. `schema.ts` owns table definitions only.
   - **Files:** `src/lib/db/schema.ts`, `src/lib/db/index.ts`
   - **Verification:** `npx biome check src/lib/db/schema.ts src/lib/db/index.ts`
 - **Task 2.2:** Verify schema integrity and concurrency.
@@ -32,7 +34,11 @@ Transition from in-memory state to a persisted SQLite database with role-based a
 ### 3. Seeding: Build-time
 - **Task 3.1:** Extend seed script to provision three demo users with stable UUIDs.
   - **Files:** `src/db/seed.ts`
-  - **Verification:** `npm run db:seed`, `sqlite3 contentops.db "SELECT count(*) FROM users;"` (confirming count is 3)
+  - **Verification:** `npx biome check src/db/seed.ts`
+- **Task 3.2:** Verify seed logic.
+  - **Files:** `src/db/seed.test.ts`
+  - **Assertions:** (a) seed script runs against :memory: DB, (b) assertions for 3 users with expected IDs and roles.
+  - **Verification:** `npm run test src/db/seed.test.ts`
 
 ### 4. Auth Core: jose v6
 - **Task 4.1:** Implement `encrypt`/`decrypt` utilities for HS256 tokens.
@@ -45,15 +51,21 @@ Transition from in-memory state to a persisted SQLite database with role-based a
 
 ### 5. Middleware: Stateless RBAC
 - **Task 5.1a:** Define middleware matcher config.
+  - **Requirement:** Matcher must exclude `/_next/static`, `/_next/image`, `/favicon.ico`, and public assets to maintain performance.
   - **Files:** `src/middleware.ts`
+  - **Verification:** `npx biome check src/middleware.ts`
 - **Task 5.1b:** Implement cookie extraction and `jose` verification with TTL.
+  - **Verification:** `npx biome check src/middleware.ts`
 - **Task 5.1c:** Implement fallback logic for missing/invalid/expired cookies (shared `creator-1`).
+  - **Verification:** `npx biome check src/middleware.ts`
 - **Task 5.1d:** Implement `/api/admin/*` route protection.
+  - **Verification:** `npx biome check src/middleware.ts`
 - **Task 5.1e:** Implement `/api/chat` and `/api/conversations` route protection.
+  - **Verification:** `npx biome check src/middleware.ts`
 - **Task 5.1f:** Verify middleware behavior.
   - **Files:** `src/middleware.test.ts`
   - **Assertions:** Signed OK, tampered rejected, expired fallback, Admin allowed on admin route, Creator denied on admin route, unprotected route passes through without session check.
-  - **Verification:** `npm run test src/middleware.test.ts`, `npx biome check src/middleware.ts`
+  - **Verification:** `npm run test src/middleware.test.ts`, `npx biome check src/middleware.ts`, `npm run typecheck`
 
 ### 6. Server Logic: Runtimes & Verifiers
 - **Task 6.1:** Create Admin verification endpoint.
@@ -78,24 +90,28 @@ Transition from in-memory state to a persisted SQLite database with role-based a
   - **Files:** `src/app/page.test.tsx`
   - **Action:** Update to use `test-helpers.ts` for async DB fetch mocking.
   - **Verification:** `npm run test src/app/page.test.tsx`
-- **Task 7.3:** Refactor `/api/chat` for persistence and streaming (nodejs runtime).
+- **Task 7.3a:** Refactor `/api/chat` for persistence and streaming (nodejs runtime).
   - **Files:** `src/app/api/chat/route.ts`, `src/components/chat/ChatUI.tsx`
-  - **Verification:** `src/app/api/chat/route.integration.test.ts` (covers persist-then-reload flow), `npm run build`
+  - **Verification:** `npx biome check src/app/api/chat/route.ts`, `npm run typecheck`
+- **Task 7.3b:** Verify E2E persistence flow.
+  - **Files:** `src/app/api/chat/route.integration.test.ts`
+  - **Assertions:** Send message -> check DB -> refresh -> verify history persistence.
+  - **Verification:** `npm run test src/app/api/chat/route.integration.test.ts`, `npm run build`
 
 ---
 
 ## Completion Checklist
 
-- [x] **Persistence:** Chat history survives page refresh. (Verified by `src/app/api/chat/route.integration.test.ts`)
-- [x] **Signed Sessions:** `contentops_session` is signed; tampering clears it. (Verified by `src/lib/auth/session.test.ts`)
-- [x] **Stateless Middleware:** `middleware.ts` contains zero database utility imports. (Verified by `grep -r "src/lib/db" src/middleware.ts` returning nothing)
-- [x] **Shared Demo State:** Anonymous/expired visitors share the `creator-1` identity. (Verified by `src/middleware.test.ts`)
-- [x] **Role Switching:** Switcher updates cookie and calls `revalidatePath('/')`. (Verified by `src/lib/auth/actions.test.ts`)
-- [x] **Route Authorization:** `/api/admin/ping` correctly enforces Admin role. (Verified by `src/middleware.test.ts` and `curl`)
-- [x] **Schema Integrity:** Database reflects the reconciled Sprint 0 + Sprint 2 schema. (Verified by `src/lib/db/schema.test.ts`)
-- [x] **Session TTL:** Expired cookies are treated as missing (fallback to `creator-1`). (Verified by `src/middleware.test.ts`)
-- [x] **Sprint 1 Regressions:** Existing tests pass with the new async DB fetch logic. (Verified by `npm run test src/app/page.test.tsx`)
-- [x] **Verification:** `typecheck`, `lint`, `test`, `build` all pass.
+- [ ] **Persistence:** Chat history survives page refresh. (Verified by `src/app/api/chat/route.integration.test.ts`)
+- [ ] **Signed Sessions:** `contentops_session` is signed; tampering clears it. (Verified by `src/lib/auth/session.test.ts`)
+- [ ] **Stateless Middleware:** `middleware.ts` contains zero database utility imports. (Verified by `grep -r "src/lib/db" src/middleware.ts` returning nothing)
+- [ ] **Shared Demo State:** Anonymous/expired visitors share the `creator-1` identity. (Verified by `src/middleware.test.ts`)
+- [ ] **Role Switching:** Switcher updates cookie and calls `revalidatePath('/')`. (Verified by `src/lib/auth/actions.test.ts`)
+- [ ] **Route Authorization:** `/api/admin/ping` correctly enforces Admin role. (Verified by `src/middleware.test.ts` and `curl`)
+- [ ] **Schema Integrity:** Database reflects the reconciled Sprint 0 + Sprint 2 schema. (Verified by `src/lib/db/schema.test.ts`)
+- [ ] **Session TTL:** Expired cookies are treated as missing (fallback to `creator-1`). (Verified by `src/middleware.test.ts`)
+- [ ] **Sprint 1 Regressions:** Existing tests pass with the new async DB fetch logic. (Verified by `npm run test src/app/page.test.tsx`)
+- [ ] **Verification:** `typecheck`, `lint`, `test`, `build` all pass.
 
 ---
 
